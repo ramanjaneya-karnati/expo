@@ -2,6 +2,7 @@
 
 #import <EXPermissions/EXRemoteNotificationRequester.h>
 #import <EXPermissions/EXUserNotificationRequester.h>
+#import <EXCore/EXUtilities.h>
 
 NSString * const EXAppDidRegisterForRemoteNotificationsNotificationName = @"kEXAppDidRegisterForRemoteNotificationsNotification";
 
@@ -28,9 +29,12 @@ NSString * const EXAppDidRegisterForRemoteNotificationsNotificationName = @"kEXA
 
 + (NSDictionary *)permissionsWithModuleRegistry:(EXModuleRegistry *)moduleRegistry
 {
-  EXPermissionStatus status = (EXSharedApplication().isRegisteredForRemoteNotifications) ?
+  __block EXPermissionStatus status;
+  [EXUtilities performSynchronouslyOnMainThread:^{
+    status = (EXSharedApplication().isRegisteredForRemoteNotifications) ?
     EXPermissionStatusGranted :
     EXPermissionStatusUndetermined;
+  }];
   NSMutableDictionary *permissions = [[EXUserNotificationRequester permissionsWithModuleRegistry:moduleRegistry] mutableCopy];
   [permissions setValuesForKeysWithDictionary:@{
                                                 @"status": [EXPermissions permissionStringForStatus:status],
@@ -48,8 +52,13 @@ NSString * const EXAppDidRegisterForRemoteNotificationsNotificationName = @"kEXA
 
   _resolve = resolve;
   _reject = reject;
-  
-  if (EXSharedApplication().isRegisteredForRemoteNotifications) {
+
+  BOOL __block isRegisteredForRemoteNotifications = NO;
+  [EXUtilities performSynchronouslyOnMainThread:^{
+    isRegisteredForRemoteNotifications = EXSharedApplication().isRegisteredForRemoteNotifications;
+  }];
+
+  if (isRegisteredForRemoteNotifications) {
     // resolve immediately if already registered
     [self _maybeConsumeResolverWithCurrentPermissions];
   } else {
@@ -61,7 +70,9 @@ NSString * const EXAppDidRegisterForRemoteNotificationsNotificationName = @"kEXA
     [_localNotificationRequester setDelegate:self];
     [_localNotificationRequester requestPermissionsWithResolver:nil rejecter:nil];
     _remoteNotificationsRegistrationIsPending = YES;
-    [EXSharedApplication() registerForRemoteNotifications];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [EXSharedApplication() registerForRemoteNotifications];
+    });
   }
 }
 
