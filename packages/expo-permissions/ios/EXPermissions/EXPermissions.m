@@ -31,7 +31,7 @@ EX_EXPORT_MODULE(ExpoPermissions);
 
 + (const NSArray<Protocol *> *)exportedInterfaces
 {
-  return @[@protocol(EXPermissionsInterface)];
+  return @[@protocol(EXPermissionsInterface), @protocol(EXPermissionsModule)];
 }
 
 - (NSDictionary *)constantsToExport
@@ -326,7 +326,7 @@ EX_EXPORT_METHOD_AS(askAsync,
   if ([permissionsTypes count] != 1 && [permissionsTypes containsObject:@"location"]) {
     return reject (@"E_PERMISSIONS_INVALID", @"iOS platform requires you to ask for Permissions.LOCATION separately.", nil);
   }
-  
+
   for (NSString *permissionType in permissionsTypes) {
     NSMutableDictionary *permission = [[self getPermissionsForResource:permissionType] mutableCopy];
     
